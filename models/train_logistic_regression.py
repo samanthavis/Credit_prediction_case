@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import optuna
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
@@ -28,6 +29,12 @@ from sklearn.preprocessing import StandardScaler
 DATA_DIR = Path("data/processed/log_reg_t1")
 TARGET_COLUMN = "target_t+1"
 ID_COLUMNS = ["client_nr", "yearmonth"]
+
+# Columns that are already on a comparable scale or are 0/1 indicators, so scaling them
+# would only distort their interpretation.
+PRESCALED_SUFFIXES = ("_zscore", "_slope_3m")
+CATEGORICAL_PREFIXES = ("CRG_", "month_")
+BINARY_COLUMNS = ("credit_application",)
 
 # Search space for Optuna. C controls regularization strength (smaller = stronger).
 HYPERPARAMETER_SEARCH_SPACE = {
@@ -53,16 +60,35 @@ def get_feature_columns(df: pd.DataFrame) -> list[str]:
     return [col for col in df.columns if col not in excluded]
 
 
+def get_columns_to_scale(feature_columns: list[str]) -> list[str]:
+    """Raw-magnitude columns only; z-scores, slopes and one-hot dummies are left untouched."""
+
+    return [
+        col
+        for col in feature_columns
+        if not col.endswith(PRESCALED_SUFFIXES)
+        and not col.startswith(CATEGORICAL_PREFIXES)
+        and col not in BINARY_COLUMNS
+    ]
+
+
 def train_logistic_regression_model(
     train_df: pd.DataFrame,
     feature_columns: list[str],
     params: dict,
 ) -> Pipeline:
-    """Fit a scaled logistic regression; scaling is required for regularization to be fair."""
+    """Fit logistic regression with scaling; scaling is required for regularization to be fair."""
+
+    columns_to_scale = get_columns_to_scale(feature_columns)
+
+    preprocessor = ColumnTransformer(
+        [("scale", StandardScaler(), columns_to_scale)],
+        remainder="passthrough",
+    )
 
     model = Pipeline(
         [
-            ("scaler", StandardScaler()),
+            ("preprocessor", preprocessor),
             (
                 "classifier",
                 LogisticRegression(
@@ -76,6 +102,7 @@ def train_logistic_regression_model(
         ]
     )
 
+    # fitting on train only means the scaler never sees validation/test statistics
     model.fit(train_df[feature_columns], train_df[TARGET_COLUMN])
     return model
 
