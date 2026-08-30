@@ -20,12 +20,20 @@ Credit_prediction_case/
 │   ├── compare_models.py              # Test-set comparison of saved models
 │   ├── explain_models.py              # SHAP explainability
 │   └── artifacts/                     # generated: saved models + chosen thresholds
+├── notebooks/
+│   ├── t1/                            # next-month prediction horizon
+│   │   ├── train_xgboost_t1.ipynb
+│   │   ├── train_logreg_t1.ipynb
+│   │   └── compare_models_t1.ipynb
+│   └── t3/                            # three-months-ahead prediction horizon
+│       ├── train_xgboost_t3.ipynb
+│       ├── train_logreg_t3.ipynb
+│       └── compare_models_t3.ipynb
 ├── eda_credit_applications.ipynb      # Exploratory data analysis
-├── data_preprocessing.ipynb           # Cleaning, feature engineering, splits
-├── train_xgboost_model.ipynb          # Train + evaluate + save XGBoost model
-├── train_logreg_model.ipynb           # Train + evaluate + save logistic regression
-└── compare_models.ipynb               # Compare both models + SHAP explainability
+└── data_preprocessing.ipynb           # Cleaning, feature engineering, splits
 ```
+
+The training and comparison modules are horizon-agnostic: each notebook calls `set_horizon("t1")` or `set_horizon("t3")` to point the module at the right dataset and target column.
 
 ## What to run
 
@@ -51,7 +59,10 @@ Merges the raw datasets, imputes genuine data gaps, engineers features, and writ
 
 ### 3. Train the models
 
-`train_xgboost_model.ipynb` and `train_logreg_model.ipynb`
+Pick a horizon folder (`notebooks/t1/` for next-month, `notebooks/t3/` for three-months-ahead) and run both training notebooks:
+
+- `train_xgboost_{t1,t3}.ipynb`
+- `train_logreg_{t1,t3}.ipynb`
 
 Each notebook:
 1. Tunes hyperparameters with Optuna, maximizing PR-AUC on the **validation** split.
@@ -59,13 +70,13 @@ Each notebook:
 3. Evaluates on train/validation/test at that threshold.
 4. Saves the model, feature list, and threshold.
 
-**Output:** `models/artifacts/{xgboost_t1,log_reg_t1}.joblib`
+**Output:** `models/artifacts/{xgboost,log_reg}_{t1,t3}.joblib`
 
 > The threshold is deliberately not tuned automatically — re-run the final cells after adjusting `SELECTED_THRESHOLD`.
 
 ### 4. Compare and explain
 
-`compare_models.ipynb` — requires both artifacts from step 3.
+`notebooks/{t1,t3}/compare_models_{t1,t3}.ipynb` — requires both artifacts for that horizon from step 3.
 
 - Test-set metrics per model, with precision/recall averaged **per month**.
 - Per-month breakdown to check stability over time.

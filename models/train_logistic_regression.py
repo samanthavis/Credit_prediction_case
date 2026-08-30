@@ -26,9 +26,30 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-DATA_DIR = Path("data/processed/log_reg_t1")
-TARGET_COLUMN = "target_t+1"
+DEFAULT_HORIZON = "t1"
+
+# resolved from this file's location so the module works regardless of the notebook's working directory
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+DATA_DIR = PROJECT_ROOT / f"data/processed/log_reg_{DEFAULT_HORIZON}"
+TARGET_COLUMN = f"target_{DEFAULT_HORIZON.replace('t', 't+')}"
+HORIZON = DEFAULT_HORIZON
 ID_COLUMNS = ["client_nr", "yearmonth"]
+
+
+def set_horizon(horizon: str) -> None:
+    """Point the module at the t1 or t3 dataset and its matching target column."""
+
+    global DATA_DIR, TARGET_COLUMN, HORIZON
+
+    if horizon not in ("t1", "t3"):
+        raise ValueError("horizon must be 't1' or 't3'")
+
+    HORIZON = horizon
+    DATA_DIR = PROJECT_ROOT / f"data/processed/log_reg_{horizon}"
+    TARGET_COLUMN = f"target_{horizon.replace('t', 't+')}"
+
+    print(f"Using dataset {DATA_DIR.name} with target '{TARGET_COLUMN}'")
 
 # Columns that are already on a comparable scale or are 0/1 indicators, so scaling them
 # would only distort their interpretation.
@@ -296,9 +317,12 @@ def save_model(
     model: Pipeline,
     feature_columns: list[str],
     threshold: float,
-    output_path: Path = Path("models/artifacts/log_reg_t1.joblib"),
+    output_path: Path | None = None,
 ) -> Path:
     """Persist the fitted model together with its feature list and chosen threshold."""
+
+    if output_path is None:
+        output_path = PROJECT_ROOT / f"models/artifacts/log_reg_{HORIZON}.joblib"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -307,7 +331,7 @@ def save_model(
             "model": model,
             "feature_columns": feature_columns,
             "threshold": threshold,
-            "model_name": "logistic_regression_t1",
+            "model_name": f"logistic_regression_{HORIZON}",
         },
         output_path,
     )

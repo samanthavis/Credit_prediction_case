@@ -16,17 +16,36 @@ from sklearn.metrics import (
     recall_score,
 )
 
-ARTIFACTS_DIR = Path("models/artifacts")
-TARGET_COLUMN = "target_t+1"
+DEFAULT_HORIZON = "t1"
+
+# resolved from this file's location so the module works regardless of the notebook's working directory
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+ARTIFACTS_DIR = PROJECT_ROOT / "models/artifacts"
+
+TARGET_COLUMN = f"target_{DEFAULT_HORIZON.replace('t', 't+')}"
+HORIZON = DEFAULT_HORIZON
 MONTH_COLUMN = "yearmonth"
 
-# Each saved model was trained on its own preprocessed dataset variant.
-MODEL_DATA_DIRS = {
-    "xgboost_t1": Path("data/processed/xgboost_t1"),
-    "log_reg_t1": Path("data/processed/log_reg_t1"),
-}
-
 K = 90
+
+
+def set_horizon(horizon: str) -> None:
+    """Select which prediction horizon (t1 or t3) the comparison functions operate on."""
+
+    global TARGET_COLUMN, HORIZON
+
+    if horizon not in ("t1", "t3"):
+        raise ValueError("horizon must be 't1' or 't3'")
+
+    HORIZON = horizon
+    TARGET_COLUMN = f"target_{horizon.replace('t', 't+')}"
+
+    print(f"Comparing {horizon} models with target '{TARGET_COLUMN}'")
+
+
+def model_keys() -> list[str]:
+    """Artifact names for the current horizon."""
+    return [f"xgboost_{HORIZON}", f"log_reg_{HORIZON}"]
 
 
 def load_artifact(model_key: str) -> dict:
@@ -36,7 +55,7 @@ def load_artifact(model_key: str) -> dict:
 
 def load_test_split(model_key: str) -> pd.DataFrame:
     """Load the test split belonging to a model's dataset variant."""
-    return pd.read_parquet(MODEL_DATA_DIRS[model_key] / "test.parquet")
+    return pd.read_parquet(PROJECT_ROOT / "data/processed" / model_key / "test.parquet")
 
 
 def precision_recall_at_k(y_true: np.ndarray, y_scores: np.ndarray, k: int) -> tuple[float, float]:

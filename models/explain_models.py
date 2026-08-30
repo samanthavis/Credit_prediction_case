@@ -46,12 +46,23 @@ def compute_shap_values(
     return shap_values, features
 
 
-def plot_shap_summary(model_key: str, max_display: int = 20, **kwargs) -> shap.Explanation:
+def plot_shap_summary(
+    model_key: str,
+    max_display: int = 20,
+    xlim_percentile: float = 99.5,
+    **kwargs,
+) -> shap.Explanation:
     """Beeswarm plot showing each feature's SHAP value distribution."""
 
     shap_values, _ = compute_shap_values(model_key, **kwargs)
 
     shap.plots.beeswarm(shap_values, max_display=max_display, show=False)
+
+    if xlim_percentile is not None:
+        # a few extreme SHAP values would otherwise squash the bulk of the distribution
+        limit = np.percentile(np.abs(shap_values.values), xlim_percentile)
+        plt.xlim(-limit, limit)
+
     plt.title(f"SHAP summary - {model_key}")
     plt.tight_layout()
     plt.show()

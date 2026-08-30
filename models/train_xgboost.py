@@ -23,9 +23,30 @@ from sklearn.metrics import (
     recall_score,
 )
 
-DATA_DIR = Path("data/processed/xgboost_t1")
-TARGET_COLUMN = "target_t+1"
+DEFAULT_HORIZON = "t1"
+
+# resolved from this file's location so the module works regardless of the notebook's working directory
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+DATA_DIR = PROJECT_ROOT / f"data/processed/xgboost_{DEFAULT_HORIZON}"
+TARGET_COLUMN = f"target_{DEFAULT_HORIZON.replace('t', 't+')}"
+HORIZON = DEFAULT_HORIZON
 ID_COLUMNS = ["client_nr", "yearmonth"]
+
+
+def set_horizon(horizon: str) -> None:
+    """Point the module at the t1 or t3 dataset and its matching target column."""
+
+    global DATA_DIR, TARGET_COLUMN, HORIZON
+
+    if horizon not in ("t1", "t3"):
+        raise ValueError("horizon must be 't1' or 't3'")
+
+    HORIZON = horizon
+    DATA_DIR = PROJECT_ROOT / f"data/processed/xgboost_{horizon}"
+    TARGET_COLUMN = f"target_{horizon.replace('t', 't+')}"
+
+    print(f"Using dataset {DATA_DIR.name} with target '{TARGET_COLUMN}'")
 
 # Search space for Optuna; each parameter is drawn from a small discrete grid.
 # Biased towards simpler, more regularized models, since deeper trees with small leaves
@@ -299,9 +320,12 @@ def save_model(
     model: xgb.XGBClassifier,
     feature_columns: list[str],
     threshold: float,
-    output_path: Path = Path("models/artifacts/xgboost_t1.joblib"),
+    output_path: Path | None = None,
 ) -> Path:
     """Persist the fitted model together with its feature list and chosen threshold."""
+
+    if output_path is None:
+        output_path = PROJECT_ROOT / f"models/artifacts/xgboost_{HORIZON}.joblib"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -310,7 +334,7 @@ def save_model(
             "model": model,
             "feature_columns": feature_columns,
             "threshold": threshold,
-            "model_name": "xgboost_t1",
+            "model_name": f"xgboost_{HORIZON}",
         },
         output_path,
     )
