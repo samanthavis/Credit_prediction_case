@@ -181,3 +181,51 @@ def plot_test_precision_recall_curves(model_keys: list[str]) -> None:
     ax.legend()
     ax.grid(True, alpha=0.3)
     plt.show()
+
+def plot_test_precision_at_k(model_keys: list[str],k_list: list[int], k: int = None) -> None:
+    """Overlay the test-set precision@K curves of all given models."""
+    if k is None:
+        k = K  # Use the default K value if not provided explicitly
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    for model_key in model_keys:
+        _, y_true, y_scores = score_model(model_key)
+        precision_at_k, _ = zip(*(precision_recall_at_k(y_true, y_scores, ki) for ki in k_list))
+        ax.plot(
+            k_list,
+            precision_at_k,
+            marker="o",
+            label=f"{model_key}",
+        )
+            
+    # plot precision @ K
+    baseline_rate = y_true.mean()
+
+    # Random-selection baseline
+    ax.axhline(
+        baseline_rate,
+        linestyle="--",
+        label=f"Random baseline ({baseline_rate:.1%})",
+    )
+
+    # Highlight the specified K
+    ax.axvline(
+        x=k,
+        color="green",
+        linestyle="--",
+        linewidth=1.5,
+        label=f"K={k}",
+    )
+    
+    ax.set_xlabel("Number of customers contacted (K)")
+    ax.set_ylabel("Precision@K")
+    ax.set_title("Precision@K vs. Outreach Capacity")
+    ax.set_ylim(bottom=0)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+    return

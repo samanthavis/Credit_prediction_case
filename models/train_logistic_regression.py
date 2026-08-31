@@ -63,7 +63,7 @@ HYPERPARAMETER_SEARCH_SPACE = {
     "penalty": ["l1", "l2"],
 }
 
-N_TRIALS = 50
+N_TRIALS = 14
 MAX_ITER = 2000
 
 # Number of clients used for the top-k metrics.
