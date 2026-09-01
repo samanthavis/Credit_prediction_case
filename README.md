@@ -53,7 +53,7 @@ Merges the raw datasets, imputes genuine data gaps, engineers features, and writ
 |---|---|
 | train | `yearmonth <= 2015-08` |
 | validation | `2015-09 <= yearmonth <= 2015-12` |
-| test | `yearmonth >= 2016-01` (imputed rows excluded) |
+| test | `yearmonth >= 2016-01` |
 
 **Output:** `data/processed/{dataset}/{split}.parquet`
 
