@@ -80,7 +80,7 @@ Each notebook:
 
 - Test-set metrics per model, with precision/recall averaged **per month**.
 - Per-month breakdown to check stability over time.
-- Overlaid precision-recall curves and lift over the random baseline.
+- Overlaid precision-recall curves and precision@K plots
 - SHAP feature importance, direction of effect, cross-model agreement, and single-prediction explanations.
 
 ## Running scripts directly
