@@ -72,6 +72,25 @@ def precision_recall_at_k(y_true: np.ndarray, y_scores: np.ndarray, k: int) -> t
     return precision_at_k, recall_at_k
 
 
+def mean_precision_at_k_per_month(
+    months: pd.Series,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    k: int = K,
+) -> float:
+    """Calculate the mean precision@k across months."""
+
+    precisions = [
+        precision_recall_at_k(
+            y_true[group.index],
+            y_pred[group.index],
+            k,
+        )[0]
+        for _, group in months.groupby(months)
+    ]
+
+    return float(np.mean(precisions))
+
 def precision_recall_per_month(
     months: pd.Series,
     y_true: np.ndarray,
@@ -146,7 +165,6 @@ def monthly_breakdown(model_key: str) -> pd.DataFrame:
     y_pred = (y_scores >= artifact["threshold"]).astype(int)
 
     return precision_recall_per_month(test_df[MONTH_COLUMN], y_true, y_pred)
-
 
 def compare_models(model_keys: list[str], k: int = K) -> pd.DataFrame:
     """Build a test-set metrics table for all given models."""
@@ -229,3 +247,62 @@ def plot_test_precision_at_k(model_keys: list[str],k_list: list[int], k: int = N
     plt.show()
 
     return
+
+def plot_monthly_breakdown_mean_precision_at_k(model_keys: list[str], k_list: list[int]) -> list:
+    """Plot per K mean monthly precision@K on the test set for all given models."""
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    for model_key in model_keys:
+        artifact = load_artifact(model_key)
+        test_df = load_test_split(model_key)
+
+        y_true = test_df[TARGET_COLUMN].to_numpy()
+        y_scores = artifact["model"].predict_proba(test_df[artifact["feature_columns"]])[:, 1]
+        y_pred = (y_scores >= artifact["threshold"]).astype(int)
+
+        mean_monthly_precision_at_k = []
+        for ki in k_list:
+            mean_monthly_precision_at_k.append(
+                mean_precision_at_k_per_month(test_df[MONTH_COLUMN], y_true, y_pred, k=ki)
+            )
+
+        print(f"Mean monthly precision at K for model {model_key}: {mean_monthly_precision_at_k}")
+
+        ax.plot(
+            k_list,
+            mean_monthly_precision_at_k,
+            marker="o",
+            label=f"{model_key}",
+        )
+            
+    # plot precision @ K
+    baseline_rate = y_true.mean()
+
+    # Random-selection baseline
+    ax.axhline(
+        baseline_rate,
+        linestyle="--",
+        label=f"Random baseline ({baseline_rate:.1%})",
+    )
+
+    # Highlight the specified K
+    ax.axvline(
+        x=K,
+        color="green",
+        linestyle="--",
+        linewidth=1.5,
+        label=f"K={K}",
+    )
+    
+    ax.set_xlabel("Number of customers contacted (K)")
+    ax.set_ylabel("Monthly mean Precision@K")
+    ax.set_title("Monthly mean Precision@K vs. Outreach Capacity")
+    ax.set_ylim(bottom=0)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+    return 
